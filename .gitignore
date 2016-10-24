@@ -1,0 +1,7 @@
+.DS_Store
+aws.json
+node_modules
+
+# output
+css
+js/dist

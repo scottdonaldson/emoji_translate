@@ -1,0 +1,1 @@
+# Emoji to English Translation Device
