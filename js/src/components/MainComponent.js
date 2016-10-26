@@ -12,6 +12,38 @@ import emoji from '../../../data/dictionary.json';
 emoji.categories = {};
 emoji.keywords = {}; */
 
+function validateChar(c) {
+	return emoji.chars.hasOwnProperty(c);
+}
+
+function getEmojiName(c) {
+	return emoji.chars[c].name;
+}
+
+function indefiniteArticle(c) {
+	
+	var obj = emoji.chars[c];
+	
+	if ( obj.plural ) {
+		return '';
+	} else {
+		if ( ['a','e','i','o','u'].indexOf(getEmojiName(c)[0]) > -1 ) {
+			return 'an ';
+		} else {
+			return 'a ';
+		}
+	}
+}
+
+function isPlural(c) {
+	return emoji.chars[c].hasOwnProperty('plural') ? emoji.chars[c].plural : false;
+}
+
+function makePlural(c) {
+	if ( emoji.chars[c].hasOwnProperty('plural') ) return getEmojiName(c);
+	return emoji.chars[c].hasOwnProperty('plural_name') ? emoji.chars[c].plural_name : getEmojiName(c) + 's';
+}
+
 class MainComponent extends React.Component {
 
 	constructor() {
@@ -65,19 +97,6 @@ class MainComponent extends React.Component {
 	componentDidMount() {
 	}
 
-	validateChar(c) {
-		return emoji.chars.hasOwnProperty(c);
-	}
-
-	getEmojiName(c) {
-		return emoji.chars[c].name;
-	}
-
-	isPlural(c) {
-		console.log('checking for plural', c, emoji.chars[c]);
-		return emoji.chars[c].hasOwnProperty('plural') ? emoji.chars[c].plural : false;
-	}
-
 	buildSentence(text, start, end)
 	//@requires start >= 0 && start < end && end <= text.length;
 	{
@@ -87,23 +106,23 @@ class MainComponent extends React.Component {
 
 		if ( end - start === 1 ) {
 
-			sentence += this.getEmojiName(text[start]);
+			sentence += getEmojiName(text[start]);
 
 		} else if ( end - start === 2 ) {
 
 			var a = text[start],
 				b = text[start + 1];
 
-			sentence += this.getEmojiName(a) + ' ';
-			sentence += this.isPlural(a) ? 'are ' : 'is a ';
-			sentence += this.getEmojiName(b);
+			sentence += getEmojiName(a) + ' ';
+			sentence += isPlural(a) ? 'are ' : 'is ' + indefiniteArticle(b);
+			sentence += getEmojiName(b);
 
 		} else if ( end - start === 3 ) {
-			sentence += this.getEmojiName(text[start]) + ' ';
+			sentence += getEmojiName(text[start]) + ' ';
 			sentence += 'and ';
-			sentence += this.getEmojiName(text[start + 1]) + ' ';
+			sentence += getEmojiName(text[start + 1]) + ' ';
 			sentence += 'are ';
-			sentence += this.getEmojiName(text[start + 2]) + (this.isPlural(text[start + 2]) ? '' : 's'); // somewhat naïve plural
+			sentence += makePlural(text[start + 2]);
 		}
 
 		sentence += '.';
@@ -123,7 +142,7 @@ class MainComponent extends React.Component {
 		// remove invalid characters
 		while ( i < this.state.text.length ) {
 			var c = this.state.text.codePointAt(i);
-			if ( this.validateChar(c) ) {
+			if ( validateChar(c) ) {
 				codes.push(c);
 				length = codes.length;
 			}
