@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import uuid from 'uuid';
-import emoji from '../../data/dictionary.json';
+import emoji from '../../../data/dictionary.json';
 
 // emoji:
 
@@ -19,6 +19,7 @@ class MainComponent extends React.Component {
 
 		this.state = {
 			text: '',
+			codes: [],
 			translation: ''
 		};
 
@@ -72,6 +73,11 @@ class MainComponent extends React.Component {
 		return emoji.chars[c].name;
 	}
 
+	isPlural(c) {
+		console.log('checking for plural', c, emoji.chars[c]);
+		return emoji.chars[c].hasOwnProperty('plural') ? emoji.chars[c].plural : false;
+	}
+
 	buildSentence(text, start, end)
 	//@requires start >= 0 && start < end && end <= text.length;
 	{
@@ -80,29 +86,36 @@ class MainComponent extends React.Component {
 		sentence += 'The ';
 
 		if ( end - start === 1 ) {
+
 			sentence += this.getEmojiName(text[start]);
+
 		} else if ( end - start === 2 ) {
-			sentence += this.getEmojiName(text[start]) + ' ';
-			sentence += 'is a ';
-			sentence += this.getEmojiName(text[start + 1]);
+
+			var a = text[start],
+				b = text[start + 1];
+
+			sentence += this.getEmojiName(a) + ' ';
+			sentence += this.isPlural(a) ? 'are ' : 'is a ';
+			sentence += this.getEmojiName(b);
+
 		} else if ( end - start === 3 ) {
 			sentence += this.getEmojiName(text[start]) + ' ';
 			sentence += 'and ';
 			sentence += this.getEmojiName(text[start + 1]) + ' ';
 			sentence += 'are ';
-			sentence += this.getEmojiName(text[start + 2]) + 's'; // naïve plural
+			sentence += this.getEmojiName(text[start + 2]) + (this.isPlural(text[start + 2]) ? '' : 's'); // somewhat naïve plural
 		}
 
 		sentence += '.';
 
-		console.log(sentence);
+		// console.log(sentence);
 
 		return sentence;
 	}
 
 	translate() {
 		
-		var text = [],
+		var codes = [],
 			length = 0,
 			translation = '',
 			i = 0;
@@ -111,8 +124,8 @@ class MainComponent extends React.Component {
 		while ( i < this.state.text.length ) {
 			var c = this.state.text.codePointAt(i);
 			if ( this.validateChar(c) ) {
-				text.push(c);
-				length = text.length;
+				codes.push(c);
+				length = codes.length;
 			}
 			i++;
 		}
@@ -124,7 +137,7 @@ class MainComponent extends React.Component {
 
 		if ( length < 2 ) {
 			return this.setState({ 
-				translation: this.buildSentence(text, i, 1)
+				translation: this.buildSentence(codes, i, 1)
 			});
 		}
 
@@ -136,12 +149,15 @@ class MainComponent extends React.Component {
 			// if we're close to the end, build a 3-word sentence
 			if ( length - i === 3 ) end = i + 3;
 
-			translation += this.buildSentence(text, i, end) + ' ';
+			translation += this.buildSentence(codes, i, end) + ' ';
 			
 			i = end;
 		}
 
-		return this.setState({ translation });
+		return this.setState({ 
+			translation,
+			codes
+		});
 	}
 
 	change(e) {

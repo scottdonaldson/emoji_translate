@@ -19,7 +19,7 @@ var _ = require('lodash'),
 var aws = require('./aws.json');
 
 var paths = {
-    jsIn: 'js/src/main.js',
+    jsIn: ['js/src/main.js', 'js/src/dictionary.js'],
     jsOut: 'js/dist',
     cssIn: 'scss/**/*.scss',
     cssOut: 'css',
@@ -28,8 +28,8 @@ var paths = {
 
 var site = {
     'index.html': '',
-    'css/style.css': 'css',
-    'js/dist/script.min.js': 'js/dist',
+    'css/**/*': 'css',
+    'js/dist/main.js': 'js/dist',
     'img/**/*': 'img'
 };
 
@@ -50,25 +50,15 @@ function css() {
 
 gulp.task('css', css);
 
-function build(watch) {
+function dict() {
 
-    var bundler;
-
-    if ( watch ) {
-        bundler = watchify(
-            browserify(paths.jsIn,
-                _.assign(watchify.args, {
-                    debug: true
-                })
-            )
-        );
-
-        bundler.on('update', bundle);
-    } else {
-        bundler = browserify(paths.jsIn, {
+    var bundler = watchify(browserify('js/src/dictionary.js',
+        _.assign(watchify.args, {
             debug: true
-        });
-    }
+        })
+    ));
+
+    bundler.on('update', bundle);
 
     bundler.on('error', function(error) {
         console.log('Browserify error', error);
@@ -86,7 +76,7 @@ function build(watch) {
                 presets: ['es2015', 'react']
             })
             .bundle()
-            .pipe(source('script.min.js'))
+            .pipe( source( 'dictionary.js' ) )
             .pipe(buffer())
             .pipe(sourcemaps.init({ loadMaps: true }))
             .pipe(uglify())
@@ -103,13 +93,56 @@ function build(watch) {
     return bundle();
 }
 
-gulp.task('build', function() {
-    build();
-});
+gulp.task('dict', dict);
 
-gulp.task('build-watch', function() {
-    build(true);
-});
+function build() {
+
+    paths.jsIn.forEach(function(path) {
+
+        var bundler = watchify(browserify(path,
+            _.assign(watchify.args, {
+                debug: true
+            })
+        ));
+
+        bundler.on('update', bundle);
+
+        bundler.on('error', function(error) {
+            console.log('Browserify error', error);
+        });
+
+        function bundle() {
+
+            console.log('Bundle...');
+
+            var hrTime = process.hrtime();
+            var t1 = hrTime[0] * 1000 + hrTime[1] / 1000000;
+
+            bundler
+                .transform('babelify', {
+                    presets: ['es2015', 'react']
+                })
+                .bundle()
+                .pipe( source( path.split('/').pop() ) )
+                .pipe(buffer())
+                .pipe(sourcemaps.init({ loadMaps: true }))
+                .pipe(uglify())
+                .pipe(sourcemaps.write('./'))
+                .pipe(gulp.dest('js/dist'));
+
+            hrTime = process.hrtime();
+            var t2 = hrTime[0] * 1000 + hrTime[1] / 1000000;
+
+            console.log('Bundle took ' + Math.round(t2 - t1) + ' ms');
+
+        }
+
+        return bundle();
+
+    });
+}
+
+gulp.task('build', build);
 
 gulp.task('publish', function() {
 
@@ -133,7 +166,7 @@ gulp.task('publish', function() {
 
 });
 
-gulp.task('watch', ['css', 'build-watch'], function() {
+gulp.task('watch', ['css', 'build'], function() {
     gulp.watch('./scss/*.scss', ['css']);
 });
 
@@ -142,3 +175,5 @@ gulp.task('serve', ['watch'], function() {
 });
 
 gulp.task('default', ['css', 'build', 'serve']);
+
+gulp.task('edit', ['css', 'dict', 'serve']);
